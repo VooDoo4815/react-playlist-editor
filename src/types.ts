@@ -1,14 +1,16 @@
 export interface AudioTrack {
   id: string
   name: string
-  file: File
-  url: string
-  duration: number
-  bpm: number
+  file: File | null
+  fileHandle?: FileSystemFileHandle
+  url: string | null
+  duration: number | null
+  bpm: number | null
   folder: string
   tags: string[]
   container: string | null
   addedToPlaylist: boolean
+  status: 'loading' | 'ready' | 'error'
 }
 
 export interface Category {

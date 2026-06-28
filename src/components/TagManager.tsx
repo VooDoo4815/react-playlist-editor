@@ -6,9 +6,10 @@ interface TagManagerProps {
   availableTags: string[]
   onAdd: (tag: string) => void
   onRemove: (tag: string) => void
+  disabled?: boolean
 }
 
-export function TagManager({ tags, availableTags, onAdd, onRemove }: TagManagerProps) {
+export function TagManager({ tags, availableTags, onAdd, onRemove, disabled }: TagManagerProps) {
   const addableTags = availableTags.filter((tag) => !tags.includes(tag))
 
   return (
@@ -18,14 +19,15 @@ export function TagManager({ tags, availableTags, onAdd, onRemove }: TagManagerP
           key={tag}
           label={tag}
           size="small"
-          onDelete={() => onRemove(tag)}
+          onDelete={() => !disabled && onRemove(tag)}
           deleteIcon={<Close fontSize="small" />}
           variant="outlined"
-          sx={{ '& .MuiChip-deleteIcon': { color: 'inherit' } }}
+          disabled={disabled}
+          sx={{ '& .MuiChip-deleteIcon': { color: 'inherit' }, opacity: disabled ? 0.5 : 1 }}
         />
       ))}
 
-      {addableTags.length > 0 && (
+      {addableTags.length > 0 && !disabled && (
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <InputLabel id="tag-select-label">Add tag</InputLabel>
           <Select

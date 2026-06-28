@@ -1,5 +1,5 @@
-import { Box, Checkbox, FormControlLabel, Typography, IconButton, Tooltip } from '@mui/material'
-import { PlayCircleOutlined, Delete } from '@mui/icons-material'
+import { Box, Checkbox, FormControlLabel, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material'
+import { PlayCircleOutlined, Delete, ErrorOutlined } from '@mui/icons-material'
 import type { AudioTrack } from '../types'
 import { TagManager } from './TagManager'
 import { ContainerSelect } from './ContainerSelect'
@@ -23,11 +23,15 @@ export function TrackItem({
   onDelete,
   onPlay,
 }: TrackItemProps) {
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number | null) => {
+    if (seconds == null) return '--:--'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
+
+  const isLoading = track.status === 'loading'
+  const isError = track.status === 'error'
 
   return (
     <Box
@@ -35,13 +39,14 @@ export function TrackItem({
       sx={{
         p: 1.5,
         mb: 1,
-        backgroundColor: 'background.paper',
+        backgroundColor: isError ? 'error.light' : 'background.paper',
         borderRadius: 1.5,
         border: '1px solid',
-        borderColor: 'divider',
+        borderColor: isError ? 'error.main' : 'divider',
         display: 'flex',
         flexDirection: 'column',
         gap: 1,
+        opacity: isLoading ? 0.7 : 1,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -51,27 +56,37 @@ export function TrackItem({
               checked={track.addedToPlaylist}
               onChange={(e) => onPlaylistToggle(track.id, e.target.checked)}
               size="small"
+              disabled={isLoading}
             />
           }
           label="Playlist"
           sx={{ ml: -0.5 }}
         />
 
-        <Box sx={{ flex: 1, minWidth: 150 }}>
+        <Box sx={{ flex: 1, minWidth: 150, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="body1" noWrap sx={{ color: 'text.primary', fontWeight: 500 }}>
             {track.name}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
-              ⏱ {formatDuration(track.duration)}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              🎵 BPM: {Math.round(track.bpm)}
-            </Typography>
-          </Box>
+          {isLoading && (
+            <CircularProgress size={16} thickness={2} color="primary" />
+          )}
+          {isError && (
+            <Tooltip title="Metadata load failed">
+              <ErrorOutlined fontSize="small" color="error" />
+            </Tooltip>
+          )}
         </Box>
 
-        {onPlay && (
+        <Box sx={{ display: 'flex', gap: 2, mt: 0.5, opacity: isLoading ? 0.5 : 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            ⏱ {formatDuration(track.duration)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}
+          </Typography>
+        </Box>
+
+        {onPlay && track.url && !isLoading && !isError && (
           <Tooltip title="Play">
             <IconButton size="small" onClick={() => onPlay(track)} aria-label={`Play ${track.name}`}>
               <PlayCircleOutlined fontSize="large" color="primary" />
@@ -85,6 +100,7 @@ export function TrackItem({
           trackName={track.name}
           value={track.container}
           onChange={(container) => onContainerChange(track.id, container)}
+          disabled={isLoading}
         />
 
         <TagManager
@@ -92,6 +108,7 @@ export function TrackItem({
           availableTags={['chill', 'energetic', 'focus', 'party', 'workout']}
           onAdd={(tag) => onTagAdd(track.id, tag)}
           onRemove={(tag) => onTagRemove(track.id, tag)}
+          disabled={isLoading}
         />
 
         <Tooltip title="Delete track">
@@ -100,6 +117,7 @@ export function TrackItem({
             onClick={() => onDelete(track.id)}
             aria-label={`Delete ${track.name}`}
             color="error"
+            disabled={isLoading}
           >
             <Delete fontSize="small" />
           </IconButton>
