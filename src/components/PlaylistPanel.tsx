@@ -19,6 +19,7 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
     movePlaylistTrack,
     moveContainerBlock,
     containerColors,
+    containerGroupsInPlaylist,
   } = usePlaylist()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0)
@@ -45,8 +46,15 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
     })
     if (currentBlock) result.push(currentBlock)
 
+    const presentBlocks = new Set(result.filter(s => s.type === 'block').map(s => s.name))
+    for (const name of containerGroupsInPlaylist) {
+      if (!presentBlocks.has(name)) {
+        result.push({ type: 'block', name, tracks: [] })
+      }
+    }
+
     return result
-  }, [tracks])
+  }, [tracks, containerGroupsInPlaylist])
 
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 300 }}>
@@ -65,7 +73,7 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
         }
       />
       <CardContent sx={{ flex: 1, overflow: 'auto', p: 1.5 }}>
-        {tracks.length === 0 ? (
+        {segments.length === 0 ? (
           <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', py: 2 }}>
             No tracks in playlist
           </Typography>
@@ -121,18 +129,24 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
                       </Box>
                     </Box>
                     {!isCollapsed && (
-                      <Box component="ul" sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 0, m: 0, listStyle: 'none' }}>
-                        {seg.tracks.map((track, tIdx) => (
-                          <TrackItem
-                            key={track.id}
-                            variant="playlist"
-                            track={track}
-                            folderLabel={track.folder}
-                            onMoveUp={tIdx > 0 ? () => movePlaylistTrack(track.id, 'up') : undefined}
-                            onMoveDown={tIdx < seg.tracks.length - 1 ? () => movePlaylistTrack(track.id, 'down') : undefined}
-                          />
-                        ))}
-                      </Box>
+                      seg.tracks.length === 0 ? (
+                        <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 1, fontStyle: 'italic' }}>
+                          Container is empty
+                        </Typography>
+                      ) : (
+                        <Box component="ul" sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 0, m: 0, listStyle: 'none' }}>
+                          {seg.tracks.map((track, tIdx) => (
+                            <TrackItem
+                              key={track.id}
+                              variant="playlist"
+                              track={track}
+                              folderLabel={track.folder}
+                              onMoveUp={tIdx > 0 ? () => movePlaylistTrack(track.id, 'up') : undefined}
+                              onMoveDown={tIdx < seg.tracks.length - 1 ? () => movePlaylistTrack(track.id, 'down') : undefined}
+                            />
+                          ))}
+                        </Box>
+                      )
                     )}
                   </Box>
                 )

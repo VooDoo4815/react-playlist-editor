@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type { AudioTrack, CategoryMap } from '../types'
 import { DEFAULT_CONTAINERS } from '../constants'
 import { useAudioPlayback } from './useAudioPlayback'
@@ -77,6 +77,41 @@ export function usePlaylistEditor() {
     setCustomContainers,
   })
 
+  const handleUpdateTrackContainer = useCallback((id: string, container: string | null) => {
+    const track = rawTracks.find(t => t.id === id)
+    const oldContainer = track?.container ?? null
+
+    updateTrackContainer(id, container)
+
+    if (oldContainer && containerGroupsInPlaylist.includes(oldContainer) && oldContainer !== container) {
+      setPlaylistOrder(prev => prev.filter(tId => tId !== id))
+    }
+
+    if (container && containerGroupsInPlaylist.includes(container) && container !== oldContainer) {
+      setPlaylistOrder(prev => prev.includes(id) ? prev : [...prev, id])
+    }
+  }, [rawTracks, updateTrackContainer, containerGroupsInPlaylist, setPlaylistOrder])
+
+  const handleClearContainer = useCallback((name: string) => {
+    const trackIds = rawTracks.filter(t => t.container === name).map(t => t.id)
+    clearContainer(name)
+
+    if (containerGroupsInPlaylist.includes(name)) {
+      setPlaylistOrder(prev => prev.filter(id => !trackIds.includes(id)))
+      setContainerGroupsInPlaylist(prev => prev.filter(c => c !== name))
+    }
+  }, [rawTracks, clearContainer, containerGroupsInPlaylist, setPlaylistOrder, setContainerGroupsInPlaylist])
+
+  const handleRemoveContainer = useCallback((name: string) => {
+    const trackIds = rawTracks.filter(t => t.container === name).map(t => t.id)
+    removeContainer(name)
+
+    if (containerGroupsInPlaylist.includes(name)) {
+      setPlaylistOrder(prev => prev.filter(id => !trackIds.includes(id)))
+      setContainerGroupsInPlaylist(prev => prev.filter(c => c !== name))
+    }
+  }, [rawTracks, removeContainer, containerGroupsInPlaylist, setPlaylistOrder, setContainerGroupsInPlaylist])
+
   const tracks = useMemo(() => {
     const playlistSet = new Set(playlistOrder)
     return rawTracks.map(t => ({ ...t, addedToPlaylist: playlistSet.has(t.id) }))
@@ -106,7 +141,7 @@ export function usePlaylistEditor() {
     isLoadingMetadata,
     metadataProgress,
     handlePickFolder,
-    updateTrackContainer,
+    updateTrackContainer: handleUpdateTrackContainer,
     addTrackTag,
     removeTrackTag,
     togglePlaylist,
@@ -118,8 +153,8 @@ export function usePlaylistEditor() {
     seekTrack,
     allContainers,
     addContainer,
-    removeContainer,
-    clearContainer,
+    removeContainer: handleRemoveContainer,
+    clearContainer: handleClearContainer,
     clearPlaylist,
     containerGroupsInPlaylist,
     containerPlaylistTracks,
