@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import type { AudioTrack } from '../types'
+import { useBPMAnalysis } from './useBPMAnalysis'
 
 export function useTrackMetadata(
   setRawTracks: React.Dispatch<React.SetStateAction<AudioTrack[]>>
@@ -9,6 +10,8 @@ export function useTrackMetadata(
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
   const [metadataProgress, setMetadataProgress] = useState({ current: 0, total: 0 })
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const { analyzeTracks, isAnalyzing: isAnalyzingBPM, bpmProgress, cancelAnalysis: cancelBPMAnalysis } = useBPMAnalysis(setRawTracks)
 
   const processMetadataBatch = useCallback(async (tracksToProcess: AudioTrack[], signal: AbortSignal) => {
     for (let i = 0; i < tracksToProcess.length; i++) {
@@ -40,7 +43,19 @@ export function useTrackMetadata(
       setMetadataProgress(p => ({ ...p, current: i + 1 }))
     }
     setIsLoadingMetadata(false)
-  }, [setRawTracks])
+    
+    if (!signal.aborted) {
+      // Get updated tracks from state to have file property
+      setRawTracks(prev => {
+        const updatedTracks = prev.filter(t => tracksToProcess.some(ot => ot.id === t.id) && t.file !== null)
+        if (updatedTracks.length > 0) {
+          // Use setTimeout to ensure state update is processed
+          setTimeout(() => analyzeTracks(updatedTracks), 0)
+        }
+        return prev
+      })
+    }
+  }, [setRawTracks, analyzeTracks])
 
   const handlePickFolder = useCallback(async () => {
     const showDirectoryPicker = (window as unknown as { showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
@@ -113,6 +128,9 @@ export function useTrackMetadata(
     scanProgress,
     isLoadingMetadata,
     metadataProgress,
+    isAnalyzingBPM,
+    bpmProgress,
     handlePickFolder,
+    cancelBPMAnalysis,
   }
 }

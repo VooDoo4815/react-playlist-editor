@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { AudioTrack, CategoryMap, TrackFilters } from '../types'
-import { DEFAULT_CONTAINERS } from '../constants'
+import { DEFAULT_CONTAINERS } from '../types.ts'
 import { useAudioPlayback } from './useAudioPlayback'
 import { useTrackMetadata } from './useTrackMetadata'
 import { usePlaylistPersistence } from './usePlaylistPersistence'
@@ -24,7 +24,10 @@ export function usePlaylistEditor() {
     scanProgress,
     isLoadingMetadata,
     metadataProgress,
+    isAnalyzingBPM,
+    bpmProgress,
     handlePickFolder,
+    cancelBPMAnalysis,
   } = useTrackMetadata(setRawTracks)
 
   const {
@@ -105,8 +108,9 @@ export function usePlaylistEditor() {
     for (const [name, cat] of Object.entries(categories)) {
       const filtered = cat.tracks.filter(t => {
         if (trackFilters.hideInPlaylist && t.addedToPlaylist) return false
-        if (trackFilters.hideContainerized && t.container != null) return false
-        return true
+
+        return !(trackFilters.hideContainerized && t.container != null);
+
       })
       if (filtered.length === 0) continue
       const totalDuration = filtered.reduce((sum, t) => sum + (t.duration || 0), 0)
@@ -129,7 +133,10 @@ export function usePlaylistEditor() {
     scanProgress,
     isLoadingMetadata,
     metadataProgress,
+    isAnalyzingBPM,
+    bpmProgress,
     handlePickFolder,
+    cancelBPMAnalysis,
     updateTrackContainer,
     addTrackTag,
     removeTrackTag,

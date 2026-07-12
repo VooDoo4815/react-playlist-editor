@@ -18,8 +18,10 @@ function App() {
     setTrackFilters,
     isScanning,
     isLoadingMetadata,
+    isAnalyzingBPM,
     scanProgress,
     metadataProgress,
+    bpmProgress,
     handlePickFolder,
     handleExport,
     containerPlaylistTracks,
@@ -52,7 +54,7 @@ function App() {
                 variant="contained"
                 startIcon={<FolderOpen />}
                 onClick={handlePickFolder}
-                disabled={isScanning || isLoadingMetadata}
+                disabled={isScanning || isLoadingMetadata || isAnalyzingBPM}
                 size="large"
               >
                 Choose Folder
@@ -89,6 +91,14 @@ function App() {
               current={progressCurrent}
               total={progressTotal}
               label={progressLabel}
+            />
+          )}
+
+          {isAnalyzingBPM && (
+            <ProgressIndicator
+              current={bpmProgress.current}
+              total={bpmProgress.total}
+              label="Analyzing BPM..."
             />
           )}
 
