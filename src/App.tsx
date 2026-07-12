@@ -1,4 +1,4 @@
-import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip } from '@mui/material'
+import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip, FormControlLabel, Switch } from '@mui/material'
 import { FolderOpen, Download, Clear } from '@mui/icons-material'
 import { CategoryPanel } from './components/CategoryPanel'
 import { ContainerPanel } from './components/ContainerPanel'
@@ -13,6 +13,9 @@ function App() {
   const {
     tracks,
     categories,
+    filteredCategories,
+    trackFilters,
+    setTrackFilters,
     isScanning,
     isLoadingMetadata,
     scanProgress,
@@ -96,10 +99,23 @@ function App() {
             </Alert>
           )}
 
+          {Object.values(categories).length > 0 && (
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+              <FormControlLabel
+                control={<Switch checked={trackFilters.hideInPlaylist} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideInPlaylist: v }))} />}
+                label="Hide in playlist"
+              />
+              <FormControlLabel
+                control={<Switch checked={trackFilters.hideContainerized} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideContainerized: v }))} />}
+                label="Hide in container"
+              />
+            </Box>
+          )}
+
           <Grid container spacing={2} sx={{ minHeight: 400 }}>
             <Grid size={{ xs: 12, md: 4 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {Object.values(categories).map(category => (
+                {Object.values(filteredCategories).map(category => (
                   <CategoryPanel key={category.name} category={category} />
                 ))}
               </Box>

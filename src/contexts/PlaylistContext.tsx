@@ -1,10 +1,13 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { AudioTrack, CategoryMap, PlaylistEntry } from '../types'
+import type { AudioTrack, CategoryMap, PlaylistEntry, TrackFilters } from '../types'
 
 interface PlaylistContextValue {
   tracks: AudioTrack[]
   categories: CategoryMap
+  filteredCategories: CategoryMap
   playlistOrder: PlaylistEntry[]
+  trackFilters: TrackFilters
+  setTrackFilters: React.Dispatch<React.SetStateAction<TrackFilters>>
   isScanning: boolean
   scanProgress: { current: number; total: number }
   isLoadingMetadata: boolean

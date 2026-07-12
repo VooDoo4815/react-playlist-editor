@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { AudioTrack, CategoryMap } from '../types'
+import type { AudioTrack, CategoryMap, TrackFilters } from '../types'
 import { DEFAULT_CONTAINERS } from '../constants'
 import { useAudioPlayback } from './useAudioPlayback'
 import { useTrackMetadata } from './useTrackMetadata'
@@ -95,10 +95,36 @@ export function usePlaylistEditor() {
     return map
   }, [tracks])
 
+  const [trackFilters, setTrackFilters] = useState<TrackFilters>({
+    hideInPlaylist: false,
+    hideContainerized: false,
+  })
+
+  const filteredCategories: CategoryMap = useMemo(() => {
+    const map: CategoryMap = {}
+    for (const [name, cat] of Object.entries(categories)) {
+      const filtered = cat.tracks.filter(t => {
+        if (trackFilters.hideInPlaylist && t.addedToPlaylist) return false
+        if (trackFilters.hideContainerized && t.container != null) return false
+        return true
+      })
+      if (filtered.length === 0) continue
+      const totalDuration = filtered.reduce((sum, t) => sum + (t.duration || 0), 0)
+      const repetitionCount = filtered.filter(t =>
+        t.container && DEFAULT_CONTAINERS.includes(t.container as typeof DEFAULT_CONTAINERS[number])
+      ).length
+      map[name] = { name, tracks: filtered, totalDuration, trackCount: filtered.length, repetitionCount }
+    }
+    return map
+  }, [categories, trackFilters])
+
   return {
     tracks,
     categories,
+    filteredCategories,
     playlistOrder,
+    trackFilters,
+    setTrackFilters,
     isScanning,
     scanProgress,
     isLoadingMetadata,

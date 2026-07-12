@@ -24,11 +24,26 @@ export interface Category {
 
 export type CategoryMap = Record<string, Category>
 
+export interface TrackFilters {
+  hideInPlaylist: boolean
+  hideContainerized: boolean
+}
+
 export type PlaylistEntry =
   | { type: 'track'; id: string }
   | { type: 'container'; name: string }
 
-export const DEFAULT_CONTAINERS = ['1 hour', '2 hours', 'break'] as const
+export const DEFAULT_CONTAINERS = [
+  'Intro',
+  'Vibing I',
+  'Break I',
+  'Pre peak',
+  'Peak',
+  'Break II',
+  'Vibing II',
+  'Last Hour',
+] as const
+
 export type Container = (typeof DEFAULT_CONTAINERS)[number]
 
 export const DEFAULT_TAGS = ['chill', 'energetic', 'focus', 'party', 'workout'] as const
