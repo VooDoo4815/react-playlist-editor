@@ -1,61 +1,28 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardHeader, CardContent, Typography, Box, IconButton, Tooltip, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Checkbox, FormControlLabel } from '@mui/material'
 import { Add, Delete, Clear, ExpandMore, ExpandLess } from '@mui/icons-material'
 import type { AudioTrack } from '../types'
-import { DEFAULT_CONTAINERS } from '../types'
-import { CONTAINER_COLOR_PALETTE } from '../hooks/usePlaylistEditor'
+import { CONTAINER_COLOR_PALETTE, DEFAULT_CONTAINERS } from '../constants'
+import { formatDuration, formatTotalDuration, hexToRgba } from '../utils/format'
+import { usePlaylist } from '../contexts/PlaylistContext'
 import { TrackItem } from './TrackItem'
 
 interface ContainerPanelProps {
   tracks: AudioTrack[]
-  onContainerChange: (id: string, container: string | null) => void
-  onTagAdd: (id: string, tag: string) => void
-  onTagRemove: (id: string, tag: string) => void
-  onPlaylistToggle: (id: string, added: boolean) => void
-  onDelete: (id: string) => void
-  onPlay?: (track: AudioTrack) => void
-  playingTrackId?: string | null
-  audioCurrentTime?: number
-  onSeek?: (time: number) => void
-  containers: readonly string[]
-  onContainerAdd: (name: string, color?: string) => void
-  onContainerRemove: (name: string) => void
-  onContainerClear: (name: string) => void
-  onMoveTrack: (trackId: string, direction: 'up' | 'down', visibleTrackIds: string[]) => void
-  containerGroupsInPlaylist: readonly string[]
-  onToggleContainerGroup: (name: string) => void
-  containerOrder: Record<string, string[]>
-  containerColors: Record<string, string>
 }
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-export function ContainerPanel({
-  tracks,
-  onContainerChange,
-  onTagAdd,
-  onTagRemove,
-  onPlaylistToggle,
-  onDelete,
-  onPlay,
-  playingTrackId,
-  audioCurrentTime,
-  onSeek,
-  containers,
-  onContainerAdd,
-  onContainerRemove,
-  onContainerClear,
-  containerGroupsInPlaylist,
-  onMoveTrack,
-  onToggleContainerGroup,
-  containerOrder,
-  containerColors,
-}: ContainerPanelProps) {
+export function ContainerPanel({ tracks }: ContainerPanelProps) {
+  const {
+    allContainers,
+    addContainer,
+    removeContainer,
+    clearContainer,
+    moveTrack,
+    containerGroupsInPlaylist,
+    toggleContainerGroup,
+    containerOrder,
+    containerColors,
+  } = usePlaylist()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -82,27 +49,14 @@ export function ContainerPanel({
     return map
   }, [tracks, containerOrder])
 
-  const formatDuration = (seconds: number | null) => {
-    if (seconds == null) return '--:--'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const formatTotalDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
-  }
-
   const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0)
   const isDefault = (name: string) => DEFAULT_CONTAINERS.includes(name as typeof DEFAULT_CONTAINERS[number])
-  const isEmpty = containers.length === 0
+  const isEmpty = allContainers.length === 0
 
   const handleAddSubmit = () => {
     const trimmed = newName.trim()
     if (trimmed) {
-      onContainerAdd(trimmed, selectedColor || undefined)
+      addContainer(trimmed, selectedColor || undefined)
       setNewName('')
       setSelectedColor(null)
       setDialogOpen(false)
@@ -182,20 +136,19 @@ export function ContainerPanel({
             No containers. Click + to add one.
           </Typography>
         ) : (
-          containers.map((containerName, idx) => {
+          allContainers.map((containerName) => {
             const containerTracks = tracksByContainer[containerName] || []
             const groupDuration = containerTracks.reduce((sum, t) => sum + (t.duration || 0), 0)
-            const isLast = idx === containers.length - 1
             const color = containerColors[containerName]
             const bgColor = color ? hexToRgba(color, 0.12) : 'transparent'
             return (
               <Box key={containerName} sx={{ borderRadius: 1.5, backgroundColor: bgColor, p: 1, mx: -1, mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                  <FormControlLabel
+                    <FormControlLabel
                     control={
                       <Checkbox
                         checked={containerGroupsInPlaylist.includes(containerName)}
-                        onChange={() => onToggleContainerGroup(containerName)}
+                        onChange={() => toggleContainerGroup(containerName)}
                         size="small"
                       />
                     }
@@ -207,13 +160,13 @@ export function ContainerPanel({
                       {collapsed[containerName] ? <ExpandMore fontSize="small" /> : <ExpandLess fontSize="small" />}
                     </IconButton>
                     <Tooltip title="Clear container">
-                      <IconButton size="small" onClick={() => onContainerClear(containerName)}>
+                      <IconButton size="small" onClick={() => clearContainer(containerName)}>
                         <Clear fontSize="small" />
                       </IconButton>
                     </Tooltip>
                     {!isDefault(containerName) && (
                       <Tooltip title="Delete container">
-                        <IconButton size="small" color="error" onClick={() => onContainerRemove(containerName)}>
+                        <IconButton size="small" color="error" onClick={() => removeContainer(containerName)}>
                           <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -239,19 +192,9 @@ export function ContainerPanel({
                             key={track.id}
                             variant="container"
                             track={track}
-                            onContainerChange={onContainerChange}
-                            onTagAdd={onTagAdd}
-                            onTagRemove={onTagRemove}
-                            onPlaylistToggle={onPlaylistToggle}
-                            onDelete={onDelete}
-                            onPlay={onPlay}
-                            playingTrackId={playingTrackId}
-                            audioCurrentTime={audioCurrentTime}
-                            onSeek={onSeek}
                             folderLabel={track.folder}
-                            containers={containers}
-                            onMoveUp={tIndex > 0 ? () => onMoveTrack(track.id, 'up', visibleIds) : undefined}
-                            onMoveDown={tIndex < containerTracks.length - 1 ? () => onMoveTrack(track.id, 'down', visibleIds) : undefined}
+                            onMoveUp={tIndex > 0 ? () => moveTrack(track.id, 'up', visibleIds) : undefined}
+                            onMoveDown={tIndex < containerTracks.length - 1 ? () => moveTrack(track.id, 'down', visibleIds) : undefined}
                           />
                         )
                       })}

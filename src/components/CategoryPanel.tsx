@@ -1,39 +1,15 @@
 import { Card, CardHeader, CardContent, Typography, Box } from '@mui/material'
 import type { Category } from '../types'
 import { TrackItem } from './TrackItem'
+import { formatTotalDuration } from '../utils/format'
+import { usePlaylist } from '../contexts/PlaylistContext'
 
 interface CategoryPanelProps {
   category: Category
-  onContainerChange: (id: string, container: string | null) => void
-  onTagAdd: (id: string, tag: string) => void
-  onTagRemove: (id: string, tag: string) => void
-  onPlaylistToggle: (id: string, added: boolean) => void
-  onDelete: (id: string) => void
-  onPlay?: (track: Category['tracks'][0]) => void
-  playingTrackId?: string | null
-  audioCurrentTime?: number
-  onSeek?: (time: number) => void
-  containers?: readonly string[]
 }
 
-export function CategoryPanel({
-  category,
-  onContainerChange,
-  onTagAdd,
-  onTagRemove,
-  onPlaylistToggle,
-  onDelete,
-  onPlay,
-  playingTrackId,
-  audioCurrentTime,
-  onSeek,
-  containers,
-}: CategoryPanelProps) {
-  const formatTotalDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
-  }
+export function CategoryPanel({ category }: CategoryPanelProps) {
+  const {} = usePlaylist()
 
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 300 }}>
@@ -63,20 +39,7 @@ export function CategoryPanel({
         ) : (
           <Box component="ul" sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 0, m: 0, listStyle: 'none' }}>
             {category.tracks.map((track) => (
-              <TrackItem
-                key={track.id}
-                track={track}
-                onContainerChange={onContainerChange}
-                onTagAdd={onTagAdd}
-                onTagRemove={onTagRemove}
-                onPlaylistToggle={onPlaylistToggle}
-                onDelete={onDelete}
-                onPlay={onPlay}
-                playingTrackId={playingTrackId}
-                audioCurrentTime={audioCurrentTime}
-                onSeek={onSeek}
-                containers={containers}
-              />
+              <TrackItem key={track.id} track={track} />
             ))}
           </Box>
         )}

@@ -1,15 +1,16 @@
 import { Box, Chip, FormControl, InputLabel, Select, MenuItem } from '@mui/material'
+import { DEFAULT_TAGS } from '../constants'
 import { Close } from '@mui/icons-material'
 
 interface TagManagerProps {
   tags: string[]
-  availableTags: string[]
+  availableTags?: readonly string[]
   onAdd: (tag: string) => void
   onRemove: (tag: string) => void
   disabled?: boolean
 }
 
-export function TagManager({ tags, availableTags, onAdd, onRemove, disabled }: TagManagerProps) {
+export function TagManager({ tags, availableTags = DEFAULT_TAGS, onAdd, onRemove, disabled }: TagManagerProps) {
   const addableTags = availableTags.filter((tag) => !tags.includes(tag))
 
   return (

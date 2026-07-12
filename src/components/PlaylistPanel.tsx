@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Card, CardHeader, CardContent, Typography, Box, IconButton, Tooltip } from '@mui/material'
 import { ExpandMore, ExpandLess, ArrowUpward, ArrowDownward } from '@mui/icons-material'
 import type { AudioTrack } from '../types'
+import { formatDuration, formatTotalDuration, hexToRgba } from '../utils/format'
+import { usePlaylist } from '../contexts/PlaylistContext'
 import { TrackItem } from './TrackItem'
 
 type Segment =
@@ -10,59 +12,16 @@ type Segment =
 
 interface PlaylistPanelProps {
   tracks: AudioTrack[]
-  onContainerChange: (id: string, container: string | null) => void
-  onTagAdd: (id: string, tag: string) => void
-  onTagRemove: (id: string, tag: string) => void
-  onPlaylistToggle: (id: string, added: boolean) => void
-  onDelete: (id: string) => void
-  onPlay?: (track: AudioTrack) => void
-  playingTrackId?: string | null
-  audioCurrentTime?: number
-  onSeek?: (time: number) => void
-  containers?: readonly string[]
-  onMovePlaylistTrack: (trackId: string, direction: 'up' | 'down') => void
-  onMoveContainerBlock?: (name: string, direction: 'up' | 'down') => void
-  containerColors?: Record<string, string>
 }
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-export function PlaylistPanel({
-  tracks,
-  onContainerChange,
-  onTagAdd,
-  onTagRemove,
-  onPlaylistToggle,
-  onDelete,
-  onPlay,
-  playingTrackId,
-  audioCurrentTime,
-  onSeek,
-  containers,
-  onMovePlaylistTrack,
-  onMoveContainerBlock,
-  containerColors = {},
-}: PlaylistPanelProps) {
+export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
+  const {
+    movePlaylistTrack,
+    moveContainerBlock,
+    containerColors,
+  } = usePlaylist()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0)
-
-  const formatDuration = (seconds: number | null) => {
-    if (seconds == null) return '--:--'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const formatTotalDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
-  }
 
   const segments = useMemo(() => {
     const result: Segment[] = []
@@ -133,14 +92,14 @@ export function PlaylistPanel({
                         <Typography variant="caption" color="text.secondary">
                           🎵 {seg.tracks.length} · ⏱ {formatDuration(groupDuration)}
                         </Typography>
-                        {onMoveContainerBlock && (
+                        {moveContainerBlock && (
                           <>
                             <Tooltip title="Move block up">
                               <span>
                                 <IconButton
                                   size="small"
                                   disabled={segIdx === 0}
-                                  onClick={() => onMoveContainerBlock(seg.name, 'up')}
+                                  onClick={() => moveContainerBlock(seg.name, 'up')}
                                 >
                                   <ArrowUpward fontSize="small" />
                                 </IconButton>
@@ -151,7 +110,7 @@ export function PlaylistPanel({
                                 <IconButton
                                   size="small"
                                   disabled={segIdx === segments.length - 1}
-                                  onClick={() => onMoveContainerBlock(seg.name, 'down')}
+                                  onClick={() => moveContainerBlock(seg.name, 'down')}
                                 >
                                   <ArrowDownward fontSize="small" />
                                 </IconButton>
@@ -168,19 +127,9 @@ export function PlaylistPanel({
                             key={track.id}
                             variant="playlist"
                             track={track}
-                            onContainerChange={onContainerChange}
-                            onTagAdd={onTagAdd}
-                            onTagRemove={onTagRemove}
-                            onPlaylistToggle={onPlaylistToggle}
-                            onDelete={onDelete}
-                            onPlay={onPlay}
-                            playingTrackId={playingTrackId}
-                            audioCurrentTime={audioCurrentTime}
-                            onSeek={onSeek}
                             folderLabel={track.folder}
-                            containers={containers}
-                            onMoveUp={tIdx > 0 ? () => onMovePlaylistTrack(track.id, 'up') : undefined}
-                            onMoveDown={tIdx < seg.tracks.length - 1 ? () => onMovePlaylistTrack(track.id, 'down') : undefined}
+                            onMoveUp={tIdx > 0 ? () => movePlaylistTrack(track.id, 'up') : undefined}
+                            onMoveDown={tIdx < seg.tracks.length - 1 ? () => movePlaylistTrack(track.id, 'down') : undefined}
                           />
                         ))}
                       </Box>
@@ -194,19 +143,9 @@ export function PlaylistPanel({
                   key={seg.track.id}
                   variant="playlist"
                   track={seg.track}
-                  onContainerChange={onContainerChange}
-                  onTagAdd={onTagAdd}
-                  onTagRemove={onTagRemove}
-                  onPlaylistToggle={onPlaylistToggle}
-                  onDelete={onDelete}
-                  onPlay={onPlay}
-                  playingTrackId={playingTrackId}
-                  audioCurrentTime={audioCurrentTime}
-                  onSeek={onSeek}
                   folderLabel={seg.track.folder}
-                  containers={containers}
-                  onMoveUp={idx > 0 ? () => onMovePlaylistTrack(seg.track.id, 'up') : undefined}
-                  onMoveDown={idx < tracks.length - 1 ? () => onMovePlaylistTrack(seg.track.id, 'down') : undefined}
+                  onMoveUp={idx > 0 ? () => movePlaylistTrack(seg.track.id, 'up') : undefined}
+                  onMoveDown={idx < tracks.length - 1 ? () => movePlaylistTrack(seg.track.id, 'down') : undefined}
                 />
               )
             })}
