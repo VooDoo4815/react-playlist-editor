@@ -2,19 +2,35 @@ import { Card, CardHeader, CardContent, Typography, Box } from '@mui/material'
 import type { Category } from '../types'
 import { TrackItem } from './TrackItem'
 import { formatTotalDuration } from '../utils/format'
-import { usePlaylist } from '../contexts/PlaylistContext'
 
 interface CategoryPanelProps {
   category: Category
 }
 
-export function CategoryPanel({ category }: CategoryPanelProps) {
-  const {} = usePlaylist()
+function FolderLabel({ path }: { path: string }) {
+  const parts = path.split('/')
+  const name = parts[parts.length - 1]
+  const parent = parts.length > 1 ? parts.slice(0, -1).join(' / ') : null
 
+  return (
+    <Box>
+      {parent && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+          {parent}
+        </Typography>
+      )}
+      <Typography variant="h6" sx={{ lineHeight: 1.3 }}>
+        {name}
+      </Typography>
+    </Box>
+  )
+}
+
+export function CategoryPanel({ category }: CategoryPanelProps) {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 300 }}>
       <CardHeader
-        title={category.name}
+        title={<FolderLabel path={category.name} />}
         subheader={
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 0.5 }}>
             <Typography variant="caption" color="text.secondary">

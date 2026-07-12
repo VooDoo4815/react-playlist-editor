@@ -41,9 +41,10 @@ export function useTrackOps(
 
     let m3u8Content = '#EXTM3U\n'
     tracks.forEach(track => {
-      if (track.url) {
+      const trackPath = track.originalName ? `${track.folder}/${track.originalName}` : track.url
+      if (trackPath) {
         m3u8Content += `#EXTINF:${Math.round(track.duration || 0)},${track.name}\n`
-        m3u8Content += `${track.url}\n`
+        m3u8Content += `${trackPath}\n`
       }
     })
 

@@ -57,26 +57,37 @@ export function useTrackMetadata(
       setIsScanning(true)
       setScanProgress({ current: 0, total: 0 })
 
-      const folderName = dirHandle.name
-      const audioEntries: { name: string; handle: FileSystemFileHandle }[] = []
+      const rootName = dirHandle.name
+      const audioEntries: { name: string; handle: FileSystemFileHandle; folder: string }[] = []
 
-      for await (const [name, handle] of dirHandle.entries()) {
-        if (signal.aborted) return
-        if (handle.kind === 'file' && name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)) {
-          audioEntries.push({ name, handle })
-          setScanProgress(p => ({ ...p, total: audioEntries.length }))
+      async function walkDirectory(handle: FileSystemDirectoryHandle, prefix: string) {
+        for await (const [name, entry] of handle.entries()) {
+          if (signal.aborted) return
+
+          if (entry.kind === 'file') {
+            if (name.match(/\.(mp3|flac|wav|ogg|m4a|aac)$/i)) {
+              audioEntries.push({ name, handle: entry, folder: prefix })
+              setScanProgress(p => ({ ...p, total: audioEntries.length }))
+            }
+          } else if (entry.kind === 'directory') {
+            await walkDirectory(entry, `${prefix}/${name}`)
+          }
         }
       }
+
+      await walkDirectory(dirHandle, rootName)
+      if (signal.aborted) return
 
       const newTracks: AudioTrack[] = audioEntries.map(entry => ({
         id: Math.random().toString(36).substring(2, 9),
         name: entry.name.replace(/\.[^/.]+$/, ''),
+        originalName: entry.name,
         file: null,
         fileHandle: entry.handle,
         url: null,
         duration: null,
         bpm: null,
-        folder: folderName,
+        folder: entry.folder,
         tags: [],
         container: null,
         addedToPlaylist: false,

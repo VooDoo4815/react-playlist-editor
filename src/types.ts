@@ -1,6 +1,7 @@
 export interface AudioTrack {
   id: string
   name: string
+  originalName: string
   file: File | null
   fileHandle?: FileSystemFileHandle
   url: string | null
