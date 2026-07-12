@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import type { AudioTrack, CategoryMap, TrackFilters } from '../types'
-import { DEFAULT_CONTAINERS } from '../types.ts'
+import { DEFAULT_CONTAINERS } from '../types'
 import { useAudioPlayback } from './useAudioPlayback'
 import { useTrackMetadata } from './useTrackMetadata'
 import { usePlaylistPersistence } from './usePlaylistPersistence'
