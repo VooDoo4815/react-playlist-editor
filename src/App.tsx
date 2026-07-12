@@ -1,6 +1,8 @@
 import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip } from '@mui/material'
 import { FolderOpen, Download } from '@mui/icons-material'
 import { CategoryPanel } from './components/CategoryPanel'
+import { ContainerPanel } from './components/ContainerPanel'
+import { PlaylistPanel } from './components/PlaylistPanel'
 import { ProgressIndicator } from './components/ProgressIndicator'
 import { usePlaylistEditor } from './hooks/usePlaylistEditor'
 
@@ -20,8 +22,21 @@ function App() {
     deleteTrack,
     playTrack,
     handleExport,
+    playingTrackId,
+    audioCurrentTime,
+    seekTrack,
+    allContainers,
+    addContainer,
+    removeContainer,
+    clearContainer,
+    moveTrack,
+    containerGroupsInPlaylist,
+    containerPlaylistTracks,
+    toggleContainerGroup,
   } = usePlaylistEditor()
 
+  const playlistTracks = containerPlaylistTracks
+  const containerTracks = tracks.filter(t => t.container != null)
   const showProgress = isScanning || isLoadingMetadata
   const progressLabel = isScanning ? 'Scanning folder...' : 'Loading track metadata...'
   const progressCurrent = isScanning ? scanProgress.current : metadataProgress.current
@@ -52,15 +67,15 @@ function App() {
             </Button>
           </Tooltip>
 
-          <Tooltip title={`Export ${tracks.filter(t => t.addedToPlaylist).length} tracks to M3U8`}>
+          <Tooltip title={`Export ${containerPlaylistTracks.length} tracks to M3U8`}>
             <Button
               variant="contained"
               startIcon={<Download />}
               onClick={handleExport}
-              disabled={tracks.filter(t => t.addedToPlaylist).length === 0}
+              disabled={containerPlaylistTracks.length === 0}
               size="large"
             >
-              Export M3U8 ({tracks.filter(t => t.addedToPlaylist).length})
+              Export M3U8 ({containerPlaylistTracks.length})
             </Button>
           </Tooltip>
         </Box>
@@ -81,19 +96,67 @@ function App() {
         )}
 
         <Grid container spacing={2} sx={{ minHeight: 400 }}>
-          {Object.values(categories).map(category => (
-            <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={category.name}>
-              <CategoryPanel
-                category={category}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {Object.values(categories).map(category => (
+                <CategoryPanel
+                  key={category.name}
+                  category={category}
+                  onContainerChange={updateTrackContainer}
+                  onTagAdd={addTrackTag}
+                  onTagRemove={removeTrackTag}
+                  onPlaylistToggle={togglePlaylist}
+                  onDelete={deleteTrack}
+                  onPlay={playTrack}
+                  playingTrackId={playingTrackId}
+                  audioCurrentTime={audioCurrentTime}
+                  onSeek={seekTrack}
+                  containers={allContainers}
+                />
+              ))}
+            </Box>
+          </Grid>
+          {allContainers.length > 0 && (
+            <Grid size={{ xs: 12, md: 4 }}>
+              <ContainerPanel
+                tracks={containerTracks}
+                containers={allContainers}
                 onContainerChange={updateTrackContainer}
                 onTagAdd={addTrackTag}
                 onTagRemove={removeTrackTag}
                 onPlaylistToggle={togglePlaylist}
                 onDelete={deleteTrack}
                 onPlay={playTrack}
+                playingTrackId={playingTrackId}
+                audioCurrentTime={audioCurrentTime}
+                onSeek={seekTrack}
+                onContainerAdd={addContainer}
+                onContainerRemove={removeContainer}
+                onContainerClear={clearContainer}
+                onMoveTrack={moveTrack}
+                containerGroupsInPlaylist={containerGroupsInPlaylist}
+                onToggleContainerGroup={toggleContainerGroup}
               />
             </Grid>
-          ))}
+          )}
+          {playlistTracks.length > 0 && (
+            <Grid size={{ xs: 12, md: 4 }}>
+              <PlaylistPanel
+                tracks={playlistTracks}
+                containers={allContainers}
+                onContainerChange={updateTrackContainer}
+                onTagAdd={addTrackTag}
+                onTagRemove={removeTrackTag}
+                onPlaylistToggle={togglePlaylist}
+                onDelete={deleteTrack}
+                onPlay={playTrack}
+                playingTrackId={playingTrackId}
+                audioCurrentTime={audioCurrentTime}
+                onSeek={seekTrack}
+                onMoveTrack={moveTrack}
+              />
+            </Grid>
+          )}
         </Grid>
       </MuiContainer>
     </Box>

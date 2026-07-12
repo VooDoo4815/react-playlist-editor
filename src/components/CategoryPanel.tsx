@@ -10,6 +10,10 @@ interface CategoryPanelProps {
   onPlaylistToggle: (id: string, added: boolean) => void
   onDelete: (id: string) => void
   onPlay?: (track: Category['tracks'][0]) => void
+  playingTrackId?: string | null
+  audioCurrentTime?: number
+  onSeek?: (time: number) => void
+  containers?: readonly string[]
 }
 
 export function CategoryPanel({
@@ -20,6 +24,10 @@ export function CategoryPanel({
   onPlaylistToggle,
   onDelete,
   onPlay,
+  playingTrackId,
+  audioCurrentTime,
+  onSeek,
+  containers,
 }: CategoryPanelProps) {
   const formatTotalDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -53,7 +61,7 @@ export function CategoryPanel({
             No tracks in this category
           </Typography>
         ) : (
-          <Box component="ul" sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box component="ul" sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 0, m: 0, listStyle: 'none' }}>
             {category.tracks.map((track) => (
               <TrackItem
                 key={track.id}
@@ -64,6 +72,10 @@ export function CategoryPanel({
                 onPlaylistToggle={onPlaylistToggle}
                 onDelete={onDelete}
                 onPlay={onPlay}
+                playingTrackId={playingTrackId}
+                audioCurrentTime={audioCurrentTime}
+                onSeek={onSeek}
+                containers={containers}
               />
             ))}
           </Box>

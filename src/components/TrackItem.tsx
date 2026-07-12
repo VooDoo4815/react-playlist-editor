@@ -1,5 +1,6 @@
-import { Box, Checkbox, FormControlLabel, Typography, IconButton, Tooltip, CircularProgress } from '@mui/material'
-import { PlayCircleOutlined, Delete, ErrorOutlined } from '@mui/icons-material'
+import { useState } from 'react'
+import { Box, Checkbox, FormControlLabel, Typography, IconButton, Tooltip, CircularProgress, Slider } from '@mui/material'
+import { PlayCircleOutlined, StopCircle, Delete, ErrorOutlined, RemoveCircleOutlined, ArrowUpward, ArrowDownward, ExpandMore, ExpandLess } from '@mui/icons-material'
 import type { AudioTrack } from '../types'
 import { TagManager } from './TagManager'
 import { ContainerSelect } from './ContainerSelect'
@@ -12,6 +13,14 @@ interface TrackItemProps {
   onPlaylistToggle: (id: string, added: boolean) => void
   onDelete: (id: string) => void
   onPlay?: (track: AudioTrack) => void
+  playingTrackId?: string | null
+  audioCurrentTime?: number
+  onSeek?: (time: number) => void
+  folderLabel?: string
+  variant?: 'category' | 'playlist' | 'container'
+  containers?: readonly string[]
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 export function TrackItem({
@@ -22,6 +31,14 @@ export function TrackItem({
   onPlaylistToggle,
   onDelete,
   onPlay,
+  playingTrackId,
+  audioCurrentTime = 0,
+  onSeek,
+  folderLabel,
+  variant = 'category',
+  containers,
+  onMoveUp,
+  onMoveDown,
 }: TrackItemProps) {
   const formatDuration = (seconds: number | null) => {
     if (seconds == null) return '--:--'
@@ -32,23 +49,224 @@ export function TrackItem({
 
   const isLoading = track.status === 'loading'
   const isError = track.status === 'error'
+  const isPlaying = playingTrackId === track.id
+  const [expanded, setExpanded] = useState(false)
 
-  return (
+  const cardSx = {
+    p: 1.5,
+    mb: 1,
+    width: '100%',
+    backgroundColor: isError ? 'error.light' : isPlaying ? 'action.selected' : 'background.paper',
+    borderRadius: 1.5,
+    border: '1px solid',
+    borderColor: isError ? 'error.main' : isPlaying ? 'primary.main' : 'divider',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    opacity: isLoading ? 0.7 : 1,
+  } as const
+
+  const seekBar = (
     <Box
-      component="article"
       sx={{
-        p: 1.5,
-        mb: 1,
-        backgroundColor: isError ? 'error.light' : 'background.paper',
-        borderRadius: 1.5,
-        border: '1px solid',
-        borderColor: isError ? 'error.main' : 'divider',
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
         gap: 1,
-        opacity: isLoading ? 0.7 : 1,
+        minHeight: 28,
       }}
     >
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 32, textAlign: 'right' }}>
+        {formatDuration(audioCurrentTime)}
+      </Typography>
+      <Slider
+        size="small"
+        value={audioCurrentTime}
+        min={0}
+        max={track.duration || 0}
+        step={0.1}
+        onChange={(_, value) => onSeek?.(value as number)}
+        sx={{ flex: 1, py: 0 }}
+      />
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 32 }}>
+        {formatDuration(track.duration)}
+      </Typography>
+    </Box>
+  )
+
+  const playerButtons = onPlay && track.url && !isLoading && !isError ? (
+    isPlaying ? (
+      <Tooltip title="Stop">
+        <IconButton size="small" onClick={() => onPlay(track)} aria-label={`Stop ${track.name}`}>
+          <StopCircle color="primary" />
+        </IconButton>
+      </Tooltip>
+    ) : (
+      <Tooltip title="Play">
+        <IconButton size="small" onClick={() => onPlay(track)} aria-label={`Play ${track.name}`}>
+          <PlayCircleOutlined color="primary" />
+        </IconButton>
+      </Tooltip>
+    )
+  ) : null
+
+  if (variant === 'playlist') {
+    return (
+      <Box component="article" sx={cardSx}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title={track.name}>
+            <Typography variant="body1" noWrap sx={{ flex: 1, fontWeight: 500, color: 'text.primary' }}>
+              {track.name}
+            </Typography>
+          </Tooltip>
+          {onMoveUp && (
+            <Tooltip title="Move up">
+              <IconButton size="small" onClick={onMoveUp} aria-label={`Move ${track.name} up`}>
+                <ArrowUpward fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onMoveDown && (
+            <Tooltip title="Move down">
+              <IconButton size="small" onClick={onMoveDown} aria-label={`Move ${track.name} down`}>
+                <ArrowDownward fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Tooltip title="Remove from playlist">
+            <IconButton
+              size="small"
+              onClick={() => onPlaylistToggle(track.id, false)}
+              aria-label={`Remove ${track.name} from playlist`}
+              disabled={isLoading}
+            >
+              <RemoveCircleOutlined color="action" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', opacity: isLoading ? 0.5 : 1 }}>
+          {folderLabel && (
+            <Typography variant="caption" color="text.secondary">📁 {folderLabel}</Typography>
+          )}
+          <Typography variant="caption" color="text.secondary">🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}</Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {playerButtons}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            {seekBar}
+          </Box>
+          <Tooltip title={expanded ? 'Hide details' : 'Show details'}>
+            <IconButton size="small" onClick={() => setExpanded(!expanded)}>
+              {expanded ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {expanded && (
+          <>
+            <TagManager
+              tags={track.tags}
+              availableTags={['chill', 'energetic', 'focus', 'party', 'workout']}
+              onAdd={(tag) => onTagAdd(track.id, tag)}
+              onRemove={(tag) => onTagRemove(track.id, tag)}
+              disabled={isLoading}
+            />
+
+            <ContainerSelect
+              trackName={track.name}
+              value={track.container}
+              onChange={(container) => onContainerChange(track.id, container)}
+              disabled={isLoading}
+              containers={containers}
+            />
+          </>
+        )}
+      </Box>
+    )
+  }
+
+  if (variant === 'container') {
+    return (
+      <Box component="article" sx={cardSx}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title={track.name}>
+            <Typography variant="body1" noWrap sx={{ flex: 1, fontWeight: 500, color: 'text.primary' }}>
+              {track.name}
+            </Typography>
+          </Tooltip>
+          {onMoveUp && (
+            <Tooltip title="Move up">
+              <IconButton size="small" onClick={onMoveUp} aria-label={`Move ${track.name} up`}>
+                <ArrowUpward fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {onMoveDown && (
+            <Tooltip title="Move down">
+              <IconButton size="small" onClick={onMoveDown} aria-label={`Move ${track.name} down`}>
+                <ArrowDownward fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Tooltip title="Remove from container">
+            <IconButton
+              size="small"
+              onClick={() => onContainerChange(track.id, null)}
+              aria-label={`Remove ${track.name} from container`}
+              disabled={isLoading}
+            >
+              <RemoveCircleOutlined color="action" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', opacity: isLoading ? 0.5 : 1 }}>
+          {folderLabel && (
+            <Typography variant="caption" color="text.secondary">📁 {folderLabel}</Typography>
+          )}
+          <Typography variant="caption" color="text.secondary">🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}</Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {playerButtons}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            {seekBar}
+          </Box>
+          <Tooltip title={expanded ? 'Hide details' : 'Show details'}>
+            <IconButton size="small" onClick={() => setExpanded(!expanded)}>
+              {expanded ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {expanded && (
+          <>
+            <TagManager
+              tags={track.tags}
+              availableTags={['chill', 'energetic', 'focus', 'party', 'workout']}
+              onAdd={(tag) => onTagAdd(track.id, tag)}
+              onRemove={(tag) => onTagRemove(track.id, tag)}
+              disabled={isLoading}
+            />
+
+            <ContainerSelect
+              trackName={track.name}
+              value={track.container}
+              onChange={(container) => onContainerChange(track.id, container)}
+              disabled={isLoading}
+              containers={containers}
+            />
+          </>
+        )}
+      </Box>
+    )
+  }
+
+  return (
+    <Box component="article" sx={cardSx}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <FormControlLabel
           control={
@@ -64,9 +282,11 @@ export function TrackItem({
         />
 
         <Box sx={{ flex: 1, minWidth: 150, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body1" noWrap sx={{ color: 'text.primary', fontWeight: 500 }}>
-            {track.name}
-          </Typography>
+          <Tooltip title={track.name}>
+            <Typography variant="body1" noWrap sx={{ color: 'text.primary', fontWeight: 500 }}>
+              {track.name}
+            </Typography>
+          </Tooltip>
           {isLoading && (
             <CircularProgress size={16} thickness={2} color="primary" />
           )}
@@ -84,16 +304,17 @@ export function TrackItem({
           <Typography variant="caption" color="text.secondary">
             🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}
           </Typography>
+          {folderLabel && (
+            <Typography variant="caption" color="text.secondary">
+              📁 {folderLabel}
+            </Typography>
+          )}
         </Box>
 
-        {onPlay && track.url && !isLoading && !isError && (
-          <Tooltip title="Play">
-            <IconButton size="small" onClick={() => onPlay(track)} aria-label={`Play ${track.name}`}>
-              <PlayCircleOutlined fontSize="large" color="primary" />
-            </IconButton>
-          </Tooltip>
-        )}
+        {playerButtons}
       </Box>
+
+      {seekBar}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
         <ContainerSelect
@@ -101,6 +322,7 @@ export function TrackItem({
           value={track.container}
           onChange={(container) => onContainerChange(track.id, container)}
           disabled={isLoading}
+          containers={containers}
         />
 
         <TagManager

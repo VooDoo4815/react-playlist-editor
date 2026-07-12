@@ -1,62 +1,46 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { AudioTrack, CategoryMap } from '../types'
 
 const DEFAULT_CONTAINERS = ['1 hour', '2 hours', 'break'] as const
 
 export function usePlaylistEditor() {
   const [tracks, setTracks] = useState<AudioTrack[]>([])
-  const [categories, setCategories] = useState<CategoryMap>({})
   const [isScanning, setIsScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 })
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
   const [metadataProgress, setMetadataProgress] = useState({ current: 0, total: 0 })
+  const [customContainers, setCustomContainers] = useState<string[]>([])
+  const allContainers = useMemo(() => [...DEFAULT_CONTAINERS, ...customContainers], [customContainers])
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const categories: CategoryMap = useMemo(() => {
+    const map: CategoryMap = {}
+    tracks.forEach(track => {
+      if (!map[track.folder]) {
+        map[track.folder] = { name: track.folder, tracks: [], totalDuration: 0, trackCount: 0, repetitionCount: 0 }
+      }
+      map[track.folder].tracks.push(track)
+      if (track.duration) map[track.folder].totalDuration += track.duration
+      map[track.folder].trackCount += 1
+      if (track.container && DEFAULT_CONTAINERS.includes(track.container as typeof DEFAULT_CONTAINERS[number])) {
+        map[track.folder].repetitionCount += 1
+      }
+    })
+    return map
+  }, [tracks])
 
   useEffect(() => {
     const storedTracks = localStorage.getItem('audioPlaylist_tracks')
-    const storedCategories = localStorage.getItem('audioPlaylist_categories')
     if (storedTracks) {
       const parsed = JSON.parse(storedTracks)
       setTracks(parsed.map((t: AudioTrack) => ({ ...t, status: t.status || 'ready', file: null, url: null, fileHandle: undefined } as AudioTrack)))
     }
-    if (storedCategories) setCategories(JSON.parse(storedCategories))
   }, [])
 
   useEffect(() => {
     const persistTracks = tracks.map(({ file, url, fileHandle, ...rest }) => rest)
     localStorage.setItem('audioPlaylist_tracks', JSON.stringify(persistTracks))
-    localStorage.setItem('audioPlaylist_categories', JSON.stringify(categories))
-  }, [tracks, categories])
-
-  const organizeTracks = useCallback((newTracks: AudioTrack[]) => {
-    setCategories(prev => {
-      const updated = { ...prev }
-      newTracks.forEach(track => {
-        if (!updated[track.folder]) {
-          updated[track.folder] = { name: track.folder, tracks: [], totalDuration: 0, trackCount: 0, repetitionCount: 0 }
-        }
-        updated[track.folder].tracks.push(track)
-        if (track.duration) updated[track.folder].totalDuration += track.duration
-        updated[track.folder].trackCount += 1
-        if (track.container && DEFAULT_CONTAINERS.includes(track.container as typeof DEFAULT_CONTAINERS[number])) {
-          updated[track.folder].repetitionCount += 1
-        }
-      })
-      return updated
-    })
-  }, [])
-
-  const recalcRepetitionCounts = useCallback(() => {
-    setCategories(prev => {
-      const updated = { ...prev }
-      Object.values(updated).forEach(cat => {
-        cat.repetitionCount = cat.tracks.filter(t =>
-          t.container && DEFAULT_CONTAINERS.includes(t.container as typeof DEFAULT_CONTAINERS[number])
-        ).length
-      })
-      return updated
-    })
-  }, [])
+  }, [tracks])
 
   const handlePickFolder = useCallback(async () => {
     const showDirectoryPicker = (window as unknown as { showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker
@@ -100,7 +84,6 @@ export function usePlaylistEditor() {
       }))
 
       setTracks(prev => [...prev, ...newTracks])
-      organizeTracks(newTracks)
 
       setIsScanning(false)
       setIsLoadingMetadata(true)
@@ -112,7 +95,7 @@ export function usePlaylistEditor() {
       console.error('Folder pick failed:', err)
       setIsScanning(false)
     }
-  }, [organizeTracks])
+  }, [])
 
   const processMetadataBatch = useCallback(async (tracksToProcess: AudioTrack[], signal: AbortSignal) => {
     for (let i = 0; i < tracksToProcess.length; i++) {
@@ -148,8 +131,7 @@ export function usePlaylistEditor() {
 
   const updateTrackContainer = useCallback((trackId: string, container: string | null) => {
     setTracks(prev => prev.map(t => t.id === trackId ? { ...t, container } : t))
-    setTimeout(recalcRepetitionCounts, 0)
-  }, [recalcRepetitionCounts])
+  }, [])
 
   const addTrackTag = useCallback((trackId: string, tag: string) => {
     setTracks(prev => prev.map(t =>
@@ -167,19 +149,118 @@ export function usePlaylistEditor() {
     setTracks(prev => prev.map(t => t.id === trackId ? { ...t, addedToPlaylist: added } : t))
   }, [])
 
-  const deleteTrack = useCallback((trackId: string) => {
-    if (!window.confirm('Delete this track?')) return
-    setTracks(prev => prev.filter(t => t.id !== trackId))
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const cleanupAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+      audioRef.current = null
+    }
   }, [])
 
   const playTrack = useCallback((track: AudioTrack) => {
     if (!track.url) return
+
+    if (playingTrackId === track.id && audioRef.current) {
+      cleanupAudio()
+      setPlayingTrackId(null)
+      setAudioCurrentTime(0)
+      return
+    }
+
+    cleanupAudio()
+
     const audio = new Audio(track.url)
+    audioRef.current = audio
+
+    audio.ontimeupdate = () => {
+      setAudioCurrentTime(audio.currentTime)
+    }
+
+    audio.onended = () => {
+      setPlayingTrackId(null)
+      setAudioCurrentTime(0)
+      audioRef.current = null
+    }
+
     audio.play().catch(() => alert('Could not play audio'))
+    setPlayingTrackId(track.id)
+    setAudioCurrentTime(0)
+  }, [playingTrackId, cleanupAudio])
+
+  const seekTrack = useCallback((time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time
+      setAudioCurrentTime(time)
+    }
   }, [])
 
+  const clearContainer = useCallback((name: string) => {
+    setTracks(prev => prev.map(t => t.container === name ? { ...t, container: null } : t))
+  }, [])
+
+  const [containerGroupsInPlaylist, setContainerGroupsInPlaylist] = useState<string[]>([])
+
+  const containerPlaylistTracks = useMemo(() =>
+    tracks.filter(t => t.addedToPlaylist || containerGroupsInPlaylist.includes(t.container || '')),
+    [tracks, containerGroupsInPlaylist]
+  )
+
+  const toggleContainerGroup = useCallback((name: string) => {
+    setContainerGroupsInPlaylist(prev =>
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    )
+  }, [])
+
+  const removeContainer = useCallback((name: string) => {
+    if (DEFAULT_CONTAINERS.includes(name as typeof DEFAULT_CONTAINERS[number])) {
+      clearContainer(name)
+      return
+    }
+    if (!window.confirm(`Delete container "${name}" and remove all tracks from it?`)) return
+    setCustomContainers(prev => prev.filter(c => c !== name))
+    setTracks(prev => prev.map(t => t.container === name ? { ...t, container: null } : t))
+  }, [clearContainer])
+
+  const addContainer = useCallback((name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    if (allContainers.includes(trimmed)) return
+    setCustomContainers(prev => [...prev, trimmed])
+  }, [allContainers])
+
+  const moveTrack = useCallback((trackId: string, direction: 'up' | 'down', visibleTrackIds: string[]) => {
+    const idx = visibleTrackIds.indexOf(trackId)
+    if (idx === -1) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= visibleTrackIds.length) return
+    const swapId = visibleTrackIds[swapIdx]
+
+    setTracks(prev => {
+      const trackIdx = prev.findIndex(t => t.id === trackId)
+      const swapTrackIdx = prev.findIndex(t => t.id === swapId)
+      if (trackIdx === -1 || swapTrackIdx === -1) return prev
+      const next = [...prev]
+      ;[next[trackIdx], next[swapTrackIdx]] = [next[swapTrackIdx], next[trackIdx]]
+      return next
+    })
+  }, [])
+
+  const deleteTrack = useCallback((trackId: string) => {
+    if (playingTrackId === trackId) {
+      cleanupAudio()
+      setPlayingTrackId(null)
+      setAudioCurrentTime(0)
+    }
+    if (!window.confirm('Delete this track?')) return
+    setTracks(prev => prev.filter(t => t.id !== trackId))
+  }, [playingTrackId, cleanupAudio])
+
   const handleExport = useCallback(() => {
-    const playlistTracks = tracks.filter(t => t.addedToPlaylist)
+    const playlistTracks = containerPlaylistTracks
     if (playlistTracks.length === 0) return
 
     let m3u8Content = '#EXTM3U\n'
@@ -197,10 +278,11 @@ export function usePlaylistEditor() {
     a.download = 'playlist.m3u8'
     a.click()
     URL.revokeObjectURL(url)
-  }, [tracks])
+  }, [containerPlaylistTracks])
 
   return {
     tracks,
+    moveTrack,
     categories,
     isScanning,
     scanProgress,
@@ -214,5 +296,15 @@ export function usePlaylistEditor() {
     deleteTrack,
     playTrack,
     handleExport,
+    playingTrackId,
+    audioCurrentTime,
+    seekTrack,
+    allContainers,
+    addContainer,
+    removeContainer,
+    clearContainer,
+    containerGroupsInPlaylist,
+    containerPlaylistTracks,
+    toggleContainerGroup,
   }
 }

@@ -6,9 +6,11 @@ interface ContainerSelectProps {
   onChange: (container: string | null) => void
   trackName: string
   disabled?: boolean
+  containers?: readonly string[]
 }
 
-export function ContainerSelect({ value, onChange, trackName, disabled }: ContainerSelectProps) {
+export function ContainerSelect({ value, onChange, trackName, disabled, containers }: ContainerSelectProps) {
+  const options = containers || DEFAULT_CONTAINERS
   return (
     <FormControl size="small" sx={{ minWidth: 160 }} disabled={disabled}>
       <InputLabel id={`container-select-${trackName}`}>Container</InputLabel>
@@ -20,8 +22,7 @@ export function ContainerSelect({ value, onChange, trackName, disabled }: Contai
         displayEmpty
         disabled={disabled}
       >
-        <MenuItem value="">— No container —</MenuItem>
-        {DEFAULT_CONTAINERS.map((container) => (
+        {options.map((container) => (
           <MenuItem key={container} value={container} disabled={disabled}>
             {container}
           </MenuItem>
