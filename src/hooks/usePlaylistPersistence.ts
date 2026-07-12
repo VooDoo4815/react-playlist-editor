@@ -27,9 +27,10 @@ export function usePlaylistPersistence({
   setCustomContainers,
 }: PersistenceState) {
   useEffect(() => {
-    const storedTracks = localStorage.getItem('audioPlaylist_tracks')
-    const parsed = storedTracks ? JSON.parse(storedTracks) : []
-    setRawTracks(parsed.map((t: AudioTrack) => ({ ...t, status: t.status || 'ready', file: null, url: null, fileHandle: undefined } as AudioTrack)))
+    const storedTracks = localStorage.getItem('audioPlaylist_tracks');
+    const parsed = storedTracks ? JSON.parse(storedTracks) as AudioTrack[] : [];
+
+    setRawTracks(parsed.map((t: AudioTrack) => ({ ...t, status: t.status || 'ready', file: null, url: null, fileHandle: undefined } as AudioTrack)));
 
     const storedOrder = localStorage.getItem('audioPlaylist_order')
     if (storedOrder) {
