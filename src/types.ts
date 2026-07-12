@@ -27,6 +27,8 @@ export type CategoryMap = Record<string, Category>
 export interface TrackFilters {
   hideInPlaylist: boolean
   hideContainerized: boolean
+  flatList: boolean
+  bpmSort: 'none' | 'asc' | 'desc'
 }
 
 export type PlaylistEntry =

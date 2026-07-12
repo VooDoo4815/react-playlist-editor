@@ -101,6 +101,8 @@ export function usePlaylistEditor() {
   const [trackFilters, setTrackFilters] = useState<TrackFilters>({
     hideInPlaylist: false,
     hideContainerized: false,
+    flatList: false,
+    bpmSort: 'none',
   })
 
   const filteredCategories: CategoryMap = useMemo(() => {
@@ -122,10 +124,22 @@ export function usePlaylistEditor() {
     return map
   }, [categories, trackFilters])
 
+  const flatTracks = useMemo(() => {
+    const allTracks = Object.values(filteredCategories).flatMap(c => c.tracks)
+    if (trackFilters.bpmSort === 'none') return allTracks
+    return [...allTracks].sort((a, b) => {
+      if (a.bpm === null && b.bpm === null) return 0
+      if (a.bpm === null) return 1
+      if (b.bpm === null) return -1
+      return trackFilters.bpmSort === 'asc' ? a.bpm - b.bpm : b.bpm - a.bpm
+    })
+  }, [filteredCategories, trackFilters.bpmSort])
+
   return {
     tracks,
     categories,
     filteredCategories,
+    flatTracks,
     playlistOrder,
     trackFilters,
     setTrackFilters,

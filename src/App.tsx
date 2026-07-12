@@ -1,9 +1,10 @@
-import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip, FormControlLabel, Switch } from '@mui/material'
+import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip, FormControlLabel, Switch, FormControl, InputLabel, Select, MenuItem } from '@mui/material'
 import { FolderOpen, Download, Clear } from '@mui/icons-material'
 import { CategoryPanel } from './components/CategoryPanel'
 import { ContainerPanel } from './components/ContainerPanel'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { ProgressIndicator } from './components/ProgressIndicator'
+import { TrackItem } from './components/TrackItem'
 import { PlaylistProvider } from './contexts/PlaylistContext'
 import { usePlaylistEditor } from './hooks/usePlaylistEditor'
 
@@ -14,6 +15,7 @@ function App() {
     tracks,
     categories,
     filteredCategories,
+    flatTracks,
     trackFilters,
     setTrackFilters,
     isScanning,
@@ -110,26 +112,63 @@ function App() {
           )}
 
           {Object.values(categories).length > 0 && (
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-              <FormControlLabel
-                control={<Switch checked={trackFilters.hideInPlaylist} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideInPlaylist: v }))} />}
-                label="Hide in playlist"
-              />
-              <FormControlLabel
-                control={<Switch checked={trackFilters.hideContainerized} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideContainerized: v }))} />}
-                label="Hide in container"
-              />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={<Switch checked={trackFilters.hideInPlaylist} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideInPlaylist: v }))} />}
+                  label="Hide in playlist"
+                />
+                <FormControlLabel
+                  control={<Switch checked={trackFilters.hideContainerized} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, hideContainerized: v }))} />}
+                  label="Hide in container"
+                />
+              </Box>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={<Switch checked={trackFilters.flatList} onChange={(_, v) => setTrackFilters(prev => ({ ...prev, flatList: v }))} />}
+                  label="Flat list"
+                />
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel id="bpm-sort-label">Sort by BPM</InputLabel>
+                  <Select
+                    labelId="bpm-sort-label"
+                    value={trackFilters.bpmSort}
+                    label="Sort by BPM"
+                    onChange={(e) => setTrackFilters(prev => ({ ...prev, bpmSort: e.target.value as 'none' | 'asc' | 'desc' }))}
+                  >
+                    <MenuItem value="none">None</MenuItem>
+                    <MenuItem value="asc">Ascending</MenuItem>
+                    <MenuItem value="desc">Descending</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
           )}
 
           <Grid container spacing={2} sx={{ minHeight: 400 }}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {Object.values(filteredCategories).map(category => (
-                  <CategoryPanel key={category.name} category={category} />
-                ))}
-              </Box>
-            </Grid>
+            {trackFilters.flatList ? (
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {flatTracks.length === 0 ? (
+                    <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', py: 4 }}>
+                      No tracks match current filters
+                    </Typography>
+                  ) : (
+                    flatTracks.map((track) => (
+                      <TrackItem key={track.id} track={track} folderLabel={track.folder} />
+                    ))
+                  )}
+                </Box>
+              </Grid>
+            ) : (
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {Object.values(filteredCategories).map(category => (
+                    <CategoryPanel key={category.name} category={category} />
+                  ))}
+                </Box>
+              </Grid>
+            )}
             {allContainers.length > 0 && (
               <Grid size={{ xs: 12, md: 4 }}>
                 <ContainerPanel tracks={containerTracks} />
