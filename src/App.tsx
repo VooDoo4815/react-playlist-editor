@@ -1,5 +1,5 @@
 import { Box, Container as MuiContainer, Grid, Typography, Alert, AlertTitle, Button, Tooltip } from '@mui/material'
-import { FolderOpen, Download } from '@mui/icons-material'
+import { FolderOpen, Download, Clear } from '@mui/icons-material'
 import { CategoryPanel } from './components/CategoryPanel'
 import { ContainerPanel } from './components/ContainerPanel'
 import { PlaylistPanel } from './components/PlaylistPanel'
@@ -30,9 +30,14 @@ function App() {
     removeContainer,
     clearContainer,
     moveTrack,
+    movePlaylistTrack,
+    moveContainerBlock,
     containerGroupsInPlaylist,
     containerPlaylistTracks,
     toggleContainerGroup,
+    clearPlaylist,
+    containerOrder,
+    containerColors,
   } = usePlaylistEditor()
 
   const playlistTracks = containerPlaylistTracks
@@ -76,6 +81,18 @@ function App() {
               size="large"
             >
               Export M3U8 ({containerPlaylistTracks.length})
+            </Button>
+          </Tooltip>
+          <Tooltip title="Remove all tracks from playlist">
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<Clear />}
+              onClick={clearPlaylist}
+              disabled={containerPlaylistTracks.length === 0}
+              size="large"
+            >
+              Clear Playlist
             </Button>
           </Tooltip>
         </Box>
@@ -134,6 +151,8 @@ function App() {
                 onContainerRemove={removeContainer}
                 onContainerClear={clearContainer}
                 onMoveTrack={moveTrack}
+                containerOrder={containerOrder}
+                containerColors={containerColors}
                 containerGroupsInPlaylist={containerGroupsInPlaylist}
                 onToggleContainerGroup={toggleContainerGroup}
               />
@@ -153,7 +172,9 @@ function App() {
                 playingTrackId={playingTrackId}
                 audioCurrentTime={audioCurrentTime}
                 onSeek={seekTrack}
-                onMoveTrack={moveTrack}
+                onMovePlaylistTrack={movePlaylistTrack}
+                onMoveContainerBlock={moveContainerBlock}
+                containerColors={containerColors}
               />
             </Grid>
           )}

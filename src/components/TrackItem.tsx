@@ -66,7 +66,7 @@ export function TrackItem({
     opacity: isLoading ? 0.7 : 1,
   } as const
 
-  const seekBar = (
+  const seekBar =
     <Box
       sx={{
         display: 'flex',
@@ -76,11 +76,11 @@ export function TrackItem({
       }}
     >
       <Typography variant="caption" color="text.secondary" sx={{ minWidth: 32, textAlign: 'right' }}>
-        {formatDuration(audioCurrentTime)}
+        {isPlaying ? formatDuration(audioCurrentTime): null}
       </Typography>
       <Slider
         size="small"
-        value={audioCurrentTime}
+        value={isPlaying ? audioCurrentTime : undefined}
         min={0}
         max={track.duration || 0}
         step={0.1}
@@ -90,8 +90,7 @@ export function TrackItem({
       <Typography variant="caption" color="text.secondary" sx={{ minWidth: 32 }}>
         {formatDuration(track.duration)}
       </Typography>
-    </Box>
-  )
+    </Box>;
 
   const playerButtons = onPlay && track.url && !isLoading && !isError ? (
     isPlaying ? (
@@ -267,7 +266,7 @@ export function TrackItem({
 
   return (
     <Box component="article" sx={cardSx}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <FormControlLabel
           control={
             <Checkbox
@@ -297,24 +296,39 @@ export function TrackItem({
           )}
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, mt: 0.5, opacity: isLoading ? 0.5 : 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            ⏱ {formatDuration(track.duration)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}
-          </Typography>
-          {folderLabel && (
-            <Typography variant="caption" color="text.secondary">
-              📁 {folderLabel}
-            </Typography>
-          )}
-        </Box>
-
-        {playerButtons}
+        <Tooltip title="Delete track">
+          <IconButton
+            size="small"
+            onClick={() => onDelete(track.id)}
+            aria-label={`Delete ${track.name}`}
+            color="error"
+            disabled={isLoading}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
-      {seekBar}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          ⏱ {formatDuration(track.duration)}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          🎵 BPM: {track.bpm != null ? Math.round(track.bpm) : '--'}
+        </Typography>
+        {folderLabel && (
+          <Typography variant="caption" color="text.secondary">
+            📁 {folderLabel}
+          </Typography>
+        )}
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {playerButtons}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {seekBar}
+        </Box>
+      </Box>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
         <ContainerSelect
@@ -332,18 +346,6 @@ export function TrackItem({
           onRemove={(tag) => onTagRemove(track.id, tag)}
           disabled={isLoading}
         />
-
-        <Tooltip title="Delete track">
-          <IconButton
-            size="small"
-            onClick={() => onDelete(track.id)}
-            aria-label={`Delete ${track.name}`}
-            color="error"
-            disabled={isLoading}
-          >
-            <Delete fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </Box>
     </Box>
   )
