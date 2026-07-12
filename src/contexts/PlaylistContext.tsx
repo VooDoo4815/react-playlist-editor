@@ -1,9 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { AudioTrack, CategoryMap } from '../types'
+import type { AudioTrack, CategoryMap, PlaylistEntry } from '../types'
 
 interface PlaylistContextValue {
   tracks: AudioTrack[]
   categories: CategoryMap
+  playlistOrder: PlaylistEntry[]
   isScanning: boolean
   scanProgress: { current: number; total: number }
   isLoadingMetadata: boolean

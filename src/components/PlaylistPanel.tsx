@@ -20,6 +20,7 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
     moveContainerBlock,
     containerColors,
     containerGroupsInPlaylist,
+    moveTrack,
   } = usePlaylist()
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const totalDuration = tracks.reduce((sum, t) => sum + (t.duration || 0), 0)
@@ -85,6 +86,7 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
                 const color = containerColors[seg.name]
                 const bgColor = color ? hexToRgba(color, 0.12) : 'transparent'
                 const isCollapsed = collapsed[seg.name]
+                const visibleIds = seg.tracks.map(t => t.id)
                 return (
                   <Box key={seg.name} sx={{ borderRadius: 1.5, backgroundColor: bgColor, p: 1, mx: -0.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5, px: 0.5 }}>
@@ -141,8 +143,8 @@ export function PlaylistPanel({ tracks }: PlaylistPanelProps) {
                               variant="playlist"
                               track={track}
                               folderLabel={track.folder}
-                              onMoveUp={tIdx > 0 ? () => movePlaylistTrack(track.id, 'up') : undefined}
-                              onMoveDown={tIdx < seg.tracks.length - 1 ? () => movePlaylistTrack(track.id, 'down') : undefined}
+                              onMoveUp={tIdx > 0 ? () => moveTrack(track.id, 'up', visibleIds) : undefined}
+                              onMoveDown={tIdx < seg.tracks.length - 1 ? () => moveTrack(track.id, 'down', visibleIds) : undefined}
                             />
                           ))}
                         </Box>

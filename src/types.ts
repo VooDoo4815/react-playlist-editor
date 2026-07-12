@@ -24,6 +24,10 @@ export interface Category {
 
 export type CategoryMap = Record<string, Category>
 
+export type PlaylistEntry =
+  | { type: 'track'; id: string }
+  | { type: 'container'; name: string }
+
 export const DEFAULT_CONTAINERS = ['1 hour', '2 hours', 'break'] as const
 export type Container = (typeof DEFAULT_CONTAINERS)[number]
 

@@ -1,120 +1,83 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { AudioTrack } from '../types'
+import type { AudioTrack, PlaylistEntry } from '../types'
 import { movePlaylistTrackLogic } from './movePlaylistTrack'
 
 export function usePlaylistOrder(
   rawTracks: AudioTrack[],
   containerOrder: Record<string, string[]>,
 ) {
-  const [playlistOrder, setPlaylistOrder] = useState<string[]>([])
-  const [containerGroupsInPlaylist, setContainerGroupsInPlaylist] = useState<string[]>([])
+  const [playlistOrder, setPlaylistOrder] = useState<PlaylistEntry[]>([])
+
+  const containerGroupsInPlaylist = useMemo(() =>
+    playlistOrder.filter(e => e.type === 'container').map(e => e.name),
+    [playlistOrder]
+  )
+
+  const containerPlaylistTracks = useMemo(() => {
+    const result: AudioTrack[] = []
+    for (const entry of playlistOrder) {
+      if (entry.type === 'track') {
+        const track = rawTracks.find(t => t.id === entry.id)
+        if (track) result.push(track)
+      } else {
+        const ids = containerOrder[entry.name] || []
+        for (const id of ids) {
+          const track = rawTracks.find(t => t.id === id)
+          if (track) result.push(track)
+        }
+      }
+    }
+    return result
+  }, [playlistOrder, rawTracks, containerOrder])
 
   const togglePlaylist = useCallback((trackId: string, added: boolean) => {
-    setPlaylistOrder(prev => {
-      if (added) {
-        return prev.includes(trackId) ? prev : [...prev, trackId]
-      }
-      return prev.filter(id => id !== trackId)
-    })
+    if (added) {
+      setPlaylistOrder(prev =>
+        prev.some(e => e.type === 'track' && e.id === trackId)
+          ? prev
+          : [...prev, { type: 'track', id: trackId }]
+      )
+    } else {
+      setPlaylistOrder(prev =>
+        prev.filter(e => !(e.type === 'track' && e.id === trackId))
+      )
+    }
   }, [])
 
   const movePlaylistTrack = useCallback((trackId: string, direction: 'up' | 'down') => {
-    setPlaylistOrder(prev => movePlaylistTrackLogic(prev, rawTracks, trackId, direction))
-  }, [rawTracks])
+    setPlaylistOrder(prev => movePlaylistTrackLogic(prev, trackId, direction))
+  }, [])
 
   const moveContainerBlock = useCallback((name: string, direction: 'up' | 'down') => {
     setPlaylistOrder(prev => {
-      const containerIds = prev.filter(id => {
-        const t = rawTracks.find(t => t.id === id)
-        return t?.container === name
-      })
-      if (containerIds.length === 0) return prev
-
-      const blockStart = prev.indexOf(containerIds[0])
-      const blockEnd = blockStart + containerIds.length - 1
-      const blockLen = containerIds.length
-
-      for (let i = 0; i < containerIds.length; i++) {
-        if (prev[blockStart + i] !== containerIds[i]) return prev
-      }
-
-      const newOrder = [...prev]
-
-      if (direction === 'up') {
-        if (blockStart === 0) return prev
-        const prevId = newOrder[blockStart - 1]
-        const prevTrack = rawTracks.find(t => t.id === prevId)
-        let insertAt: number
-        if (prevTrack?.container) {
-          let prevBlockStart = blockStart - 1
-          while (prevBlockStart > 0 && rawTracks.find(t => t.id === newOrder[prevBlockStart - 1])?.container === prevTrack.container) {
-            prevBlockStart--
-          }
-          insertAt = prevBlockStart
-        } else {
-          insertAt = blockStart - 1
-        }
-        newOrder.splice(blockStart, blockLen)
-        newOrder.splice(insertAt, 0, ...containerIds)
-        return newOrder
-      } else {
-        if (blockEnd >= newOrder.length - 1) return prev
-        const nextId = newOrder[blockEnd + 1]
-        const nextTrack = rawTracks.find(t => t.id === nextId)
-        let insertAt: number
-        if (nextTrack?.container) {
-          let nextBlockEnd = blockEnd + 1
-          while (nextBlockEnd < newOrder.length - 1 && rawTracks.find(t => t.id === newOrder[nextBlockEnd + 1])?.container === nextTrack.container) {
-            nextBlockEnd++
-          }
-          insertAt = nextBlockEnd + 1
-        } else {
-          insertAt = blockEnd + 1
-        }
-        newOrder.splice(blockStart, blockLen)
-        if (nextTrack?.container) {
-          if (insertAt > blockStart) insertAt -= blockLen
-        } else {
-          insertAt = blockStart + 1
-        }
-        newOrder.splice(insertAt, 0, ...containerIds)
-        return newOrder
-      }
+      const idx = prev.findIndex(e => e.type === 'container' && e.name === name)
+      if (idx === -1) return prev
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+      return next
     })
-  }, [rawTracks])
+  }, [])
 
   const toggleContainerGroup = useCallback((name: string) => {
-    if (containerGroupsInPlaylist.includes(name)) {
-      setContainerGroupsInPlaylist(prev => prev.filter(c => c !== name))
-      setPlaylistOrder(prev => prev.filter(id => {
-        const t = rawTracks.find(t => t.id === id)
-        return !t || t.container !== name
-      }))
-    } else {
-      setContainerGroupsInPlaylist(prev => [...prev, name])
-      setPlaylistOrder(prev => {
-        const ids = containerOrder[name] || rawTracks.filter(t => t.container === name).map(t => t.id)
-        const newIds = ids.filter(id => !prev.includes(id))
-        return [...prev, ...newIds]
-      })
-    }
-  }, [containerGroupsInPlaylist, rawTracks, containerOrder])
+    setPlaylistOrder(prev => {
+      const exists = prev.some(e => e.type === 'container' && e.name === name)
+      if (exists) {
+        return prev.filter(e => !(e.type === 'container' && e.name === name))
+      }
+      return [...prev, { type: 'container', name }]
+    })
+  }, [])
 
   const clearPlaylist = useCallback(() => {
     setPlaylistOrder([])
-    setContainerGroupsInPlaylist([])
   }, [])
-
-  const containerPlaylistTracks = useMemo(() =>
-    playlistOrder.map(id => rawTracks.find(t => t.id === id)).filter(Boolean) as AudioTrack[],
-    [playlistOrder, rawTracks]
-  )
 
   return {
     playlistOrder,
     setPlaylistOrder,
     containerGroupsInPlaylist,
-    setContainerGroupsInPlaylist,
     containerPlaylistTracks,
     togglePlaylist,
     movePlaylistTrack,

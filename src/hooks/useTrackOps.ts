@@ -1,9 +1,9 @@
 import { useCallback } from 'react'
-import type { AudioTrack } from '../types'
+import type { AudioTrack, PlaylistEntry } from '../types'
 
 export function useTrackOps(
   setRawTracks: React.Dispatch<React.SetStateAction<AudioTrack[]>>,
-  setPlaylistOrder: React.Dispatch<React.SetStateAction<string[]>>,
+  setPlaylistOrder: React.Dispatch<React.SetStateAction<PlaylistEntry[]>>,
   setContainerOrder: React.Dispatch<React.SetStateAction<Record<string, string[]>>>,
   playingTrackId: string | null,
   cleanupAudio: () => void,
@@ -26,7 +26,7 @@ export function useTrackOps(
     }
     if (!window.confirm('Delete this track?')) return
     setRawTracks(prev => prev.filter(t => t.id !== trackId))
-    setPlaylistOrder(prev => prev.filter(id => id !== trackId))
+    setPlaylistOrder(prev => prev.filter(e => !(e.type === 'track' && e.id === trackId)))
     setContainerOrder(prev => {
       const next = { ...prev }
       for (const name of Object.keys(next)) {
